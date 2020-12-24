@@ -6,9 +6,9 @@ import urllib.request
 import pandas as pd
 #
 os.chdir('C:/Users/Michael/Dropbox/Documents/Financial/Investments')
-symbols_in = pd.read_excel('./symbols_in.xlsx')
+symbols_in = pd.read_excel('./symbols_in.xlsx', engine='openpyxl')
 #
-df = pd.DataFrame(columns=['symbol','name','industry','sector','dividend','price','target','buy','overweight','hold','underweight','sell'])
+df = pd.DataFrame(columns=['symbol','name','industry','sector','price','target','div_yield','buy','overweight','hold','underweight','sell'])
 df['symbol'] = symbols_in['symbol']
 df.set_index('symbol', inplace=True)
 
@@ -17,20 +17,20 @@ for symbol in symbols:
     print(symbol)
     time.sleep(0.5)  # pause briefly between stock symbols to respect server traffic
     
-    # read dividend info from stock homepage
+    # read dividend yield info from stock homepage
     try:
         fhand = urllib.request.urlopen('https://www.marketwatch.com/investing/stock/' + symbol)
         stage = 0
         for line in fhand:
             linetext = line.decode().strip()
-            if stage == 'dividend':
+            if stage == 'yield':
                 try:
-                    df.loc[symbol,'dividend'] = float(re.findall('<span class="primary ">\$(.+)</span>', linetext)[0])
+                    df.loc[symbol,'div_yield'] = float(re.findall('<span class="primary ">(.+)\%</span>', linetext)[0])
                 except:
-                    df.loc[symbol,'dividend'] = float(0)
-                break
-            if '<small class="label">Dividend</small>' in linetext:
-                stage = 'dividend'
+                    df.loc[symbol,'div_yield'] = float(0)
+                break  # all done here; move along to next URL
+            if '<small class="label">Yield</small>' in linetext:
+                stage = 'yield'
     except:
         continue
     
@@ -141,7 +141,7 @@ for symbol in symbols:
     except:
         continue
 
-df['pct_gain'] = 100*(df['target'] - df['price']) / df['price']
+df['pct_gain'] = df['div_yield'] + 100*(df['target'] - df['price']) / df['price']
 df['buy_pct'] = 100*df['buy'] / (df['buy'] + df['overweight'] + df['hold'] + df['underweight'] + df['sell'])
 df['sell_pct'] = 100*df['sell'] / (df['buy'] + df['overweight'] + df['hold'] + df['underweight'] + df['sell'])
 df = df.sort_values(['buy_pct','pct_gain'], ascending=False)
