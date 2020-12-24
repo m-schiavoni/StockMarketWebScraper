@@ -4,11 +4,12 @@ import re
 import time
 import urllib.request
 import pandas as pd
+import numpy as np
 #
 os.chdir('C:/Users/Michael/Dropbox/Documents/Financial/Investments')
 symbols_in = pd.read_excel('./symbols_in.xlsx', engine='openpyxl')
 #
-df = pd.DataFrame(columns=['symbol','name','industry','sector','price','target','div_yield','buy','overweight','hold','underweight','sell'])
+df = pd.DataFrame(columns=['symbol','name','industry','sector','price','target','div_yield','buy','overweight','hold','underweight','sell','median'])
 df['symbol'] = symbols_in['symbol']
 df.set_index('symbol', inplace=True)
 
@@ -80,8 +81,17 @@ for symbol in symbols:
             elif stage == 'target':
                 if toggle:
                     df.loc[symbol,'target'] = float(re.findall('.+>(.+)</td>', linetext)[0].replace(',', ''))
-                    stage = 'buy'
+                    stage = 'median'
+                    toggle = False
                 elif 'Average Target Price' in linetext:
+                    toggle = True
+            
+            # find median price target
+            elif stage == 'median':
+                if toggle:
+                    df.loc[symbol,'median'] = float(re.findall('.+>\$(.+)</td>', linetext)[0].replace(',', ''))
+                    stage = 'buy'
+                elif '<td class="table__cell w75">Median</td>' in linetext:
                     toggle = True
 
             # find number of 'Buy' recommendations
@@ -141,10 +151,14 @@ for symbol in symbols:
     except:
         continue
 
+# to be conservative, use minimum value of median and average price targets
+df['target'] = np.fmin(df['target'], df['median'])
+df.drop(columns='median', inplace=True)
+
 df['pct_gain'] = df['div_yield'] + 100*(df['target'] - df['price']) / df['price']
 df['buy_pct'] = 100*df['buy'] / (df['buy'] + df['overweight'] + df['hold'] + df['underweight'] + df['sell'])
 df['sell_pct'] = 100*df['sell'] / (df['buy'] + df['overweight'] + df['hold'] + df['underweight'] + df['sell'])
-df = df.sort_values(['buy_pct','pct_gain'], ascending=False)
+df.sort_values(['buy_pct','pct_gain'], ascending=False, inplace=True)
 
 df.to_excel('./output.xlsx', float_format="%.2f")
 print('Data scraping successfully completed.')
