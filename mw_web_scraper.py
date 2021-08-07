@@ -158,7 +158,7 @@ df.drop(columns='median', inplace=True)
 df['pct_gain'] = df['div_yield'] + 100*(df['target'] - df['price']) / df['price']
 df['buy_pct'] = 100*df['buy'] / (df['buy'] + df['overweight'] + df['hold'] + df['underweight'] + df['sell'])
 df['sell_pct'] = 100*df['sell'] / (df['buy'] + df['overweight'] + df['hold'] + df['underweight'] + df['sell'])
-df.sort_values(['buy_pct','pct_gain'], ascending=False, inplace=True)
+df.sort_values('pct_gain', ascending=False, inplace=True)
 
 df.to_excel('./output.xlsx', float_format="%.2f")
 print('Data scraping successfully completed.')
